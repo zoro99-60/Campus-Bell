@@ -1,8 +1,19 @@
+'use client'
+
+import React, { useActionState, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { login } from '@/app/auth/actions'
-import { BellRing, ArrowRight } from 'lucide-react'
+import { BellRing, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 export default function LoginPage() {
+  const [state, formAction, isPending] = useActionState(login, null)
+  const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const msg = params.get('message')
+    if (msg) setMessage(msg)
+  }, [])
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 font-sans px-4">
       <div className="absolute inset-0 z-0 bg-grid-slate-100 dark:bg-grid-slate-900/[0.04] bg-[bottom_1px_center] [mask-image:linear-gradient(to_bottom,transparent,black)]"></div>
@@ -20,8 +31,22 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Welcome back</h1>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">Sign in to your Campus Bell account</p>
           </div>
+
+          {state?.error && (
+            <div className="mb-6 flex gap-2 rounded-xl bg-red-50 dark:bg-red-900/30 p-4 text-sm text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 items-start">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <p>{state.error}</p>
+            </div>
+          )}
+
+          {message && (
+             <div className="mb-6 flex gap-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 p-4 text-sm text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 items-start">
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+              <p>{message}</p>
+            </div>
+          )}
           
-          <form className="space-y-5">
+          <form action={formAction} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-slate-900 dark:text-slate-200 mb-1.5" htmlFor="email">College Email</label>
               <input 
@@ -50,10 +75,11 @@ export default function LoginPage() {
             </div>
             
             <button 
-              formAction={login} 
-              className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white rounded-xl px-4 py-3.5 font-semibold shadow-sm hover:bg-indigo-500 hover:shadow-indigo-500/25 transition-all active:scale-[0.98]"
+              type="submit"
+              disabled={isPending}
+              className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white rounded-xl px-4 py-3.5 font-semibold shadow-sm hover:bg-indigo-500 hover:shadow-indigo-500/25 transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              Sign In <ArrowRight className="w-4 h-4" />
+              {isPending ? 'Signing in...' : <>Sign In <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
           

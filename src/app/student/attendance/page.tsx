@@ -1,74 +1,89 @@
-import { CheckCircle2, TrendingUp } from 'lucide-react'
+import { createClient } from '@/utils/supabase/server'
+import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 
-export default function StudentAttendance() {
+export default async function StudentAttendancePage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: profile } = await supabase
+    .from('users').select('*').eq('user_id', user?.id).single()
+
+  const { data: allTimetable } = await supabase
+    .from('timetable').select('timetable_id, subject')
+    .eq('department', profile?.department || '')
+    .eq('year', profile?.year || 1)
+    .eq('division', profile?.division || '')
+
+  const { data: allAttendance } = await supabase
+    .from('attendance').select('*').eq('user_id', user?.id)
+
+  // Group by subject
+  const subjectMap: Record<string, { present: number; total: number; absent: string[] }> = {}
+  allTimetable?.forEach(t => {
+    if (!subjectMap[t.subject]) subjectMap[t.subject] = { present: 0, total: 0, absent: [] }
+  })
+  allAttendance?.forEach(a => {
+    const t = allTimetable?.find(tt => tt.timetable_id === a.timetable_id)
+    if (t && subjectMap[t.subject]) {
+      subjectMap[t.subject].total++
+      if (a.status === 'present') subjectMap[t.subject].present++
+      else subjectMap[t.subject].absent.push(a.date)
+    }
+  })
+
+  const subjects = Object.entries(subjectMap)
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-          My Attendance Logs 📊
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400">
-          Track your presence across all enrolled subjects.
-        </p>
-      </header>
+    <div className="min-h-screen bg-slate-50 px-5 pt-8">
+      <h1 className="text-2xl font-bold text-slate-900 mb-1">Attendance History</h1>
+      <p className="text-sm text-slate-500 mb-6">{profile?.department} · Sem {profile?.semester} · Div {profile?.division}</p>
 
-      {/* Aggregate Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-900/10 p-6 flex flex-col justify-center shadow-sm relative overflow-hidden group">
-          <div className="absolute right-[-10%] top-[-10%] text-emerald-600 opacity-5 group-hover:scale-110 transition-transform duration-500">
-            <CheckCircle2 className="w-32 h-32" />
-          </div>
-          <p className="text-sm font-medium text-emerald-800 dark:text-emerald-400 relative z-10">Overall Percentage</p>
-          <div className="flex items-baseline gap-2 relative z-10 mt-2">
-            <p className="text-4xl font-extrabold text-emerald-600 dark:text-emerald-400">88.4%</p>
-            <span className="text-sm font-medium text-emerald-600 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> +2%
-            </span>
-          </div>
+      {subjects.length === 0 ? (
+        <div className="text-center py-16 text-slate-400">No attendance records yet.</div>
+      ) : (
+        <div className="space-y-3">
+          {subjects.map(([subject, data]) => {
+            const pct = data.total > 0 ? Math.round((data.present / data.total) * 100) : 0
+            const isLow = pct < 75
+            const classesNeeded = isLow ? Math.ceil((0.75 * data.total - data.present) / 0.25) : 0
+            return (
+              <div key={subject} className={`bg-white rounded-2xl p-4 border ${isLow ? 'border-red-200' : 'border-slate-100'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900">{subject}</h3>
+                    {isLow && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                  </div>
+                  <span className={`text-lg font-bold ${isLow ? 'text-red-600' : 'text-green-600'}`}>{pct}%</span>
+                </div>
+                {/* Progress bar */}
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                  <div
+                    className={`h-full rounded-full transition-all ${isLow ? 'bg-red-400' : 'bg-green-500'}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>{data.present} present / {data.total} total</span>
+                  {isLow && (
+                    <span className="text-red-500 font-medium">Need {classesNeeded} more to reach 75%</span>
+                  )}
+                </div>
+                {/* Divider line */}
+                <div className="border-t border-slate-100 mt-3 pt-3">
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="flex items-center gap-1 text-green-600">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> {data.present} present
+                    </span>
+                    <span className="flex items-center gap-1 text-red-500">
+                      <XCircle className="h-3.5 w-3.5" /> {data.total - data.present} absent
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
-      </div>
-      
-      {/* Subject list */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 overflow-hidden shadow-sm mt-8">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80">
-          <h3 className="font-semibold text-slate-900 dark:text-white">Subject Breakdown</h3>
-        </div>
-        <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
-          <div className="p-6 flex items-center justify-between">
-            <div>
-              <p className="font-medium text-slate-900 dark:text-white">Database Management Systems</p>
-              <p className="text-sm text-slate-500 mt-1">42 / 45 Lectures Attended</p>
-            </div>
-            <div className="text-right">
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
-                93.3%
-              </span>
-            </div>
-          </div>
-          <div className="p-6 flex items-center justify-between">
-            <div>
-              <p className="font-medium text-slate-900 dark:text-white">Operating Systems</p>
-              <p className="text-sm text-slate-500 mt-1">35 / 40 Lectures Attended</p>
-            </div>
-            <div className="text-right">
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
-                87.5%
-              </span>
-            </div>
-          </div>
-          <div className="p-6 flex items-center justify-between opacity-80 decoration-slate-400">
-            <div>
-              <p className="font-medium text-slate-900 dark:text-white">Computer Networks</p>
-              <p className="text-sm text-slate-500 mt-1">28 / 40 Lectures Attended</p>
-            </div>
-            <div className="text-right">
-              <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 ring-1 ring-inset ring-orange-600/20 dark:bg-orange-500/10 dark:text-orange-400 dark:ring-orange-500/20">
-                70.0%
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   )
 }

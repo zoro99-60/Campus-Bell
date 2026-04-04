@@ -21,7 +21,7 @@ export async function addLecture(formData: FormData) {
   }
 
   const { error } = await supabase.from('timetable').insert(lecture)
-  if (error) return { error: error.message }
+  if (error) throw new Error(error.message)
 
   revalidatePath('/admin/timetable')
 }
@@ -56,7 +56,7 @@ export async function deleteLecture(formData: FormData) {
   }
 
   const { error } = await supabase.from('timetable').delete().eq('timetable_id', timetable_id)
-  if (error) return { error: error.message }
+  if (error) throw new Error(error.message)
 
   revalidatePath('/admin/timetable')
 }
