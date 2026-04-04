@@ -20,8 +20,8 @@ export default async function AdminDashboard() {
   const supabase = await createClient()
 
   // 1. Total Counts
-  const { count: studentCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student')
-  const { count: teacherCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'teacher')
+  const { count: studentCount } = await supabase.from('v_users').select('*', { count: 'exact', head: true }).eq('role', 'student')
+  const { count: teacherCount } = await supabase.from('v_users').select('*', { count: 'exact', head: true }).eq('role', 'teacher')
   const { count: pendingLeave } = await supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending')
 
   // 2. Pending Approvals

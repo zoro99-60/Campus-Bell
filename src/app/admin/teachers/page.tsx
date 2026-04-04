@@ -1,18 +1,19 @@
 import { createClient } from '@/utils/supabase/server'
-import { Plus, Search, UserMinus, ShieldAlert, BookOpen } from 'lucide-react'
+import { Plus, Search, UserMinus, ShieldAlert, CheckCircle2, XCircle } from 'lucide-react'
+import { toggleUserActive, deleteUser } from '@/app/auth/actions'
+import { ActionButton } from '@/components/admin/ActionButton'
 
 export default async function AdminTeachersPage() {
   const supabase = await createClient()
 
   const { data: teachers } = await supabase
-    .from('users')
+    .from('v_users')
     .select(`
       user_id,
       name,
       email,
       department,
-      active,
-      timetable:timetable (subject)
+      active
     `)
     .eq('role', 'teacher')
     .order('name')
@@ -45,18 +46,39 @@ export default async function AdminTeachersPage() {
           </div>
         ) : (
           teachers.map(teacher => (
-            <div key={teacher.user_id} className="bg-white rounded-3xl border border-slate-100 p-4 flex items-center gap-4 shadow-sm">
-               <div className="h-10 w-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0">
-                  {teacher.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-               </div>
-               <div className="flex-1">
-                  <p className="text-sm font-bold text-slate-900">{teacher.name}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{teacher.department} Dept · {teacher.email}</p>
-               </div>
-               <div className="flex gap-2">
-                  <button className="h-8 w-8 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors">
-                     <UserMinus className="h-4 w-4" />
-                  </button>
+            <div key={teacher.user_id} className="bg-white rounded-3xl border border-slate-100 p-4 flex flex-col gap-4 shadow-sm group">
+               <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-base shrink-0">
+                    {teacher.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-base font-bold text-slate-900 truncate">{teacher.name}</p>
+                      {teacher.active ? (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Active</span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 uppercase tracking-tight">Pending Approval</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{teacher.department} Dept · {teacher.email}</p>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <ActionButton 
+                      action={toggleUserActive} 
+                      userId={teacher.user_id} 
+                      active={teacher.active} 
+                      type="toggle" 
+                      variant="teacher"
+                    />
+                    
+                    <ActionButton 
+                      action={deleteUser} 
+                      userId={teacher.user_id} 
+                      type="delete" 
+                      confirmMessage="Delete this teacher account permanently?"
+                    />
+                  </div>
                </div>
             </div>
           ))
@@ -65,3 +87,4 @@ export default async function AdminTeachersPage() {
     </div>
   )
 }
+

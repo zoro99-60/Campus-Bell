@@ -7,10 +7,10 @@ export default async function StudentTimetablePage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: profile } = await supabase
-    .from('users').select('*').eq('user_id', user?.id).single()
+    .from('v_users').select('*').eq('user_id', user?.id).single()
 
   const { data: timetable } = await supabase
-    .from('timetable').select('*')
+    .from('v_timetable').select('*')
     .eq('department', profile?.department || '')
     .eq('year', profile?.year || 1)
     .eq('division', profile?.division || '')

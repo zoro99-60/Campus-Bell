@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react'
 import { approveLeave, rejectLeave } from '@/app/admin/actions'
+import { ActionButton } from '@/components/admin/ActionButton'
 
 export default async function AdminApprovalsPage() {
   const supabase = await createClient()
@@ -66,16 +67,16 @@ export default async function AdminApprovalsPage() {
 
                {leave.status === 'pending' && (
                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    <form action={async () => { 'use server'; await approveLeave(leave.leave_id) }}>
-                       <button className="w-full h-11 bg-emerald-600 text-white rounded-2xl text-sm font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
-                          <CheckCircle2 className="h-4 w-4" /> Approve
-                       </button>
-                    </form>
-                    <form action={async () => { 'use server'; await rejectLeave(leave.leave_id) }}>
-                       <button className="w-full h-11 bg-red-50 text-red-600 rounded-2xl text-sm font-bold hover:bg-red-100 transition-all flex items-center justify-center gap-2">
-                          <XCircle className="h-4 w-4" /> Reject
-                       </button>
-                    </form>
+                    <ActionButton 
+                      action={approveLeave} 
+                      leaveId={leave.leave_id} 
+                      type="approve" 
+                    />
+                    <ActionButton 
+                      action={rejectLeave} 
+                      leaveId={leave.leave_id} 
+                      type="reject" 
+                    />
                  </div>
                )}
             </div>

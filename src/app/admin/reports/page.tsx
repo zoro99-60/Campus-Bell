@@ -6,8 +6,8 @@ export default async function AdminReportsPage() {
 
   // 1. Fetch all attendance to calculate stats
   const { data: allAttendance } = await supabase.from('attendance').select('user_id, status, timetable_id')
-  const { data: allUsers } = await supabase.from('users').select('user_id, role, department, semester, division')
-  const { data: allTimetable } = await supabase.from('timetable').select('timetable_id, subject, department')
+  const { data: allUsers } = await supabase.from('v_users').select('user_id, role, department, semester, division')
+  const { data: allTimetable } = await supabase.from('v_timetable').select('timetable_id, subject, department')
 
   const students = allUsers?.filter(u => u.role === 'student') || []
   const teachers = allUsers?.filter(u => u.role === 'teacher') || []

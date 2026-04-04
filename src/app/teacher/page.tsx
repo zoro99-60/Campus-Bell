@@ -36,12 +36,12 @@ export default async function TeacherDashboard() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: profile } = await supabase
-    .from('users').select('*').eq('user_id', user?.id).single()
+    .from('v_users').select('*').eq('user_id', user?.id).single()
 
   const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long' })
 
   const { data: schedule } = await supabase
-    .from('timetable').select('*')
+    .from('v_timetable').select('*')
     .eq('teacher_user_id', user?.id)
     .eq('day', todayStr)
     .order('start_time')
@@ -54,7 +54,7 @@ export default async function TeacherDashboard() {
 
   // Get students for teacher's classes (dept/year/div of each class)
   const { data: students } = await supabase
-    .from('users').select('user_id, name, roll_number')
+    .from('v_users').select('user_id, name, roll_number')
     .eq('role', 'student')
     .eq('department', profile?.department || '')
 

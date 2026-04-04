@@ -3,14 +3,20 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function approveLeave(leaveId: string) {
+export async function approveLeave(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
 
+  const leaveId = formData.get('leave_id') as string
+
   const { error } = await supabase
     .from('leave_requests')
-    .update({ status: 'approved', reviewed_by: user.id, updated_at: new Date().toISOString() })
+    .update({ 
+      status: 'approved', 
+      reviewed_by: user.id, 
+      updated_at: new Date().toISOString() 
+    })
     .eq('leave_id', leaveId)
 
   if (error) throw new Error(error.message)
@@ -19,14 +25,20 @@ export async function approveLeave(leaveId: string) {
   revalidatePath('/admin/approvals')
 }
 
-export async function rejectLeave(leaveId: string) {
+export async function rejectLeave(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
 
+  const leaveId = formData.get('leave_id') as string
+
   const { error } = await supabase
     .from('leave_requests')
-    .update({ status: 'rejected', reviewed_by: user.id, updated_at: new Date().toISOString() })
+    .update({ 
+      status: 'rejected', 
+      reviewed_by: user.id, 
+      updated_at: new Date().toISOString() 
+    })
     .eq('leave_id', leaveId)
 
   if (error) throw new Error(error.message)

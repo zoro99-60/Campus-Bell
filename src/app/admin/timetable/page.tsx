@@ -5,7 +5,7 @@ import { addLecture, deleteLecture } from './actions'
 export default async function TimetableManagement() {
   const supabase = await createClient()
   // Fetch existing timetable records
-  const { data: lectures } = await supabase.from('timetable').select('*').order('day').order('start_time')
+  const { data: lectures } = await supabase.from('v_timetable').select('*').order('day').order('start_time')
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">

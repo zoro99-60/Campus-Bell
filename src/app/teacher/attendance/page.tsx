@@ -16,13 +16,13 @@ export default async function TeacherAttendancePage({
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: lecture } = await supabase
-    .from('timetable').select('*')
+    .from('v_timetable').select('*')
     .eq('timetable_id', timetable_id).single()
 
   if (!lecture) redirect('/teacher')
 
   const { data: students } = await supabase
-    .from('users').select('user_id, name, roll_number')
+    .from('v_users').select('user_id, name, roll_number')
     .eq('role', 'student')
     .eq('department', lecture.department)
     .eq('year', lecture.year)

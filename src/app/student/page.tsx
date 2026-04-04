@@ -50,13 +50,13 @@ export default async function StudentDashboard() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: profile } = await supabase
-    .from('users').select('*').eq('user_id', user?.id).single()
+    .from('v_users').select('*').eq('user_id', user?.id).single()
 
   const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long' })
   const todayIndex = new Date().getDay()
 
   const { data: schedule } = await supabase
-    .from('timetable').select('*')
+    .from('v_timetable').select('*')
     .eq('department', profile?.department || '')
     .eq('year', profile?.year || 1)
     .eq('division', profile?.division || '')
@@ -76,7 +76,7 @@ export default async function StudentDashboard() {
   // Attendance per subject
   const subjectMap: Record<string, { present: number; total: number }> = {}
   const { data: allTimetable } = await supabase
-    .from('timetable').select('timetable_id,subject')
+    .from('v_timetable').select('timetable_id,subject')
     .eq('department', profile?.department || '')
     .eq('year', profile?.year || 1)
     .eq('division', profile?.division || '')
