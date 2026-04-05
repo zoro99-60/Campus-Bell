@@ -6,7 +6,7 @@ import { Calendar, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 const initialState = {
   success: false,
-  error: null,
+  error: undefined,
 }
 
 export default function TeacherLeavePage() {

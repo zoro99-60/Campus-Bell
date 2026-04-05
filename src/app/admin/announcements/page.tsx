@@ -3,6 +3,8 @@ import { Megaphone, Plus, Send, Clock, User } from 'lucide-react'
 import { createAnnouncement } from '@/app/admin/actions'
 import { formatDistanceToNow } from 'date-fns'
 
+import { AdminAnnouncementForm } from './AdminAnnouncementForm'
+
 export default async function AdminAnnouncementsPage() {
   const supabase = await createClient()
 
@@ -26,33 +28,8 @@ export default async function AdminAnnouncementsPage() {
         </div>
       </div>
 
-      {/* Create Announcement Form */}
-      <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm mb-8 space-y-4">
-         <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Plus className="h-4 w-4 text-indigo-600" /> New announcement
-         </h2>
-         <form action={createAnnouncement} className="space-y-4">
-            <div>
-               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-widest mb-1.5">Title</label>
-               <input name="title" required placeholder="e.g. Campus Closed on Friday" className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-4 text-sm outline-none focus:ring-2 ring-indigo-500/20" />
-            </div>
-            <div>
-               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-widest mb-1.5">Target Audience</label>
-               <select name="target_role" className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-4 text-sm outline-none focus:ring-2 ring-indigo-500/20 appearance-none">
-                  <option value="all">Everyone</option>
-                  <option value="student">Students Only</option>
-                  <option value="teacher">Teachers Only</option>
-               </select>
-            </div>
-            <div>
-               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-widest mb-1.5">Message</label>
-               <textarea name="message" rows={3} required placeholder="Enter the announcement content..." className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-3 px-4 text-sm outline-none focus:ring-2 ring-indigo-500/20 resize-none" />
-            </div>
-            <button type="submit" className="w-full bg-indigo-700 text-white rounded-2xl py-3.5 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-700/20 hover:bg-indigo-800 transition-all active:scale-95">
-               <Send className="h-4 w-4" /> Send Announcement
-            </button>
-         </form>
-      </div>
+      {/* Interactive Announcement Form */}
+      <AdminAnnouncementForm />
 
       <div className="space-y-4">
         <h2 className="text-sm font-bold text-slate-900 mb-4">Past Announcements</h2>

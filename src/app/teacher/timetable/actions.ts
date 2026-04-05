@@ -131,3 +131,48 @@ export async function addExtraLectureByTeacher(formData: FormData) {
 
   revalidatePath('/teacher/timetable')
 }
+
+/**
+ * Sends a notification to all students in a specific division.
+ */
+export async function sendClassAlert(timetableEntryId: string, message: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  // 1. Get the division context from the timetable entry
+  const { data: entry, error: entryErr } = await supabase
+    .from('timetable_entries')
+    .select(`
+      timetable_id,
+      timetables (department, semester, division)
+    `)
+    .eq('id', timetableEntryId)
+    .single()
+
+  if (entryErr || !entry) throw new Error('Timetable entry not found')
+  const tt = entry.timetables as any
+
+  // 2. Find all students in that division
+  const { data: students, error: studentErr } = await supabase
+    .from('student_profiles')
+    .select('user_id')
+    .eq('department', tt.department)
+    .eq('semester', tt.semester)
+    .eq('division', tt.division)
+
+  if (studentErr || !students) throw new Error('Could not find students for this division')
+
+  // 3. Batch insert notifications
+  const notifyRecords = students.map(s => ({
+    user_id: s.user_id,
+    message: message,
+    type: 'change_alert',
+    sender_id: user.id
+  }))
+
+  const { error: notifyErr } = await supabase.from('notifications').insert(notifyRecords)
+  if (notifyErr) throw new Error(notifyErr.message)
+
+  revalidatePath('/student')
+}

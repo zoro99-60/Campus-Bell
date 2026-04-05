@@ -2,22 +2,22 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Calendar, Bell, User, Clock, Users, BarChart3, Settings } from 'lucide-react'
+import { Home, Calendar, Bell, User, Clock, Users, BarChart3, Settings, MessageSquare } from 'lucide-react'
 
 const studentLinks = [
   { name: 'Home',      href: '/student',            icon: Home },
   { name: 'Timetable', href: '/student/timetable',  icon: Calendar },
+  { name: 'Messages',  href: '/student/messenger',  icon: MessageSquare },
   { name: 'Alerts',    href: '/student/alerts',     icon: Bell },
   { name: 'Profile',   href: '/student/profile',    icon: User },
-  { name: 'History',   href: '/student/attendance', icon: Clock },
 ]
 
 const teacherLinks = [
   { name: 'Home',      href: '/teacher',            icon: Home },
   { name: 'Timetable', href: '/teacher/timetable',  icon: Calendar },
+  { name: 'Messages',  href: '/teacher/messenger',  icon: MessageSquare },
   { name: 'Alerts',    href: '/teacher/alerts',     icon: Bell },
   { name: 'Students',  href: '/teacher/students',   icon: Users },
-  { name: 'History',   href: '/teacher/history',    icon: Clock },
 ]
 
 const adminLinks = [

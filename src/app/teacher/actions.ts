@@ -8,22 +8,31 @@ export async function submitAttendance(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
 
-  const timetable_id = formData.get('timetable_id') as string
+  const timetable_id = formData.get('timetable_id') as string // The header ID
+  const entry_id = formData.get('entry_id') as string // The specific lecture ID
   const date = formData.get('date') as string
   const entries = JSON.parse(formData.get('entries') as string) as { user_id: string; status: 'present' | 'absent' }[]
 
-  // Create or find session
+  if (!entry_id) throw new Error('Specfic Lecture Entry ID is required')
+
+  // 1. Create or find session for this specific lecture entry
   let { data: session } = await supabase
     .from('attendance_sessions')
     .select('session_id, is_locked')
-    .eq('timetable_id', timetable_id)
+    .eq('timetable_entry_id', entry_id)
     .eq('session_date', date)
     .single()
 
   if (!session) {
     const { data: newSession } = await supabase
       .from('attendance_sessions')
-      .insert({ timetable_id, teacher_id: user.id, session_date: date, is_locked: false })
+      .insert({ 
+        timetable_id, 
+        timetable_entry_id: entry_id,
+        teacher_id: user.id, 
+        session_date: date, 
+        is_locked: false 
+      })
       .select().single()
     session = newSession
   }
@@ -32,25 +41,26 @@ export async function submitAttendance(formData: FormData) {
     return { error: 'Attendance is locked for this session.' }
   }
 
-  // Upsert attendance records
+  // 2. Upsert attendance records for this specific lecture
   const records = entries.map(e => ({
     timetable_id,
+    timetable_entry_id: entry_id,
     user_id: e.user_id,
     date,
     status: e.status,
     marked_by: user.id,
   }))
 
-  await supabase.from('attendance').upsert(records, { onConflict: 'timetable_id,user_id,date' })
+  await supabase.from('attendance').upsert(records, { onConflict: 'timetable_entry_id,user_id,date' })
 
-  // Lock the session
+  // 3. Lock the session
   if (session?.session_id) {
     await supabase.from('attendance_sessions')
       .update({ is_locked: true })
       .eq('session_id', session.session_id)
   }
 
-  // Notify students below 75%
+  // 4. Notify students below 75%
   for (const e of entries) {
     const { data: allAtt } = await supabase
       .from('attendance').select('status')
@@ -59,10 +69,18 @@ export async function submitAttendance(formData: FormData) {
     if (allAtt && allAtt.length > 0) {
       const pct = Math.round((allAtt.filter(a => a.status === 'present').length / allAtt.length) * 100)
       if (pct < 75) {
-        const { data: tInfo } = await supabase.from('timetable').select('subject').eq('timetable_id', timetable_id).single()
+        // Find subject name for the warning
+        const { data: tInfo } = await supabase
+          .from('timetable_entries')
+          .select('subjects(name)')
+          .eq('id', entry_id)
+          .single()
+
+        const subjectName = (tInfo?.subjects as any)?.name || 'Subject'
+
         await supabase.from('notifications').insert({
           user_id: e.user_id,
-          message: `Low attendance warning: ${tInfo?.subject || 'Subject'} — currently at ${pct}%. You need 75% to avoid detention.`,
+          message: `Low attendance warning: ${subjectName} — currently at ${pct}%. You need 75% to avoid detention.`,
           type: 'change_alert',
         })
       }
@@ -73,7 +91,7 @@ export async function submitAttendance(formData: FormData) {
   return { success: true }
 }
 
-export async function submitLeaveRequest(formData: FormData) {
+export async function submitLeaveRequest(prevState: any, formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')

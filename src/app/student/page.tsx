@@ -3,34 +3,8 @@ import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { Bell, ChevronRight, CheckCircle2, XCircle, Minus } from 'lucide-react'
 
-function getClassStatus(startTime: string, endTime: string) {
-  const now = new Date()
-  const [sh, sm] = startTime.split(':').map(Number)
-  const [eh, em] = endTime.split(':').map(Number)
-  const start = new Date(); start.setHours(sh, sm, 0, 0)
-  const end = new Date(); end.setHours(eh, em, 0, 0)
-  const diffMin = (start.getTime() - now.getTime()) / 60000
-  if (now >= start && now <= end) return 'live'
-  if (diffMin > 0 && diffMin <= 30) return 'soon'
-  if (diffMin > 30) return 'later'
-  return 'done'
-}
-
-function getNextClass(schedule: any[]) {
-  const now = new Date()
-  return schedule.find(l => {
-    const [h, m] = l.start_time.split(':').map(Number)
-    const start = new Date(); start.setHours(h, m, 0, 0)
-    return start > now
-  }) || (schedule.length > 0 ? schedule[0] : null)
-}
-
-function minutesUntil(timeStr: string) {
-  const [h, m] = timeStr.split(':').map(Number)
-  const target = new Date(); target.setHours(h, m, 0, 0)
-  const diff = Math.round((target.getTime() - Date.now()) / 60000)
-  return diff
-}
+import { getLectureStatus, getNextClass } from '@/utils/lecture-status'
+import { checkAndPushReminders } from './actions'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -46,8 +20,12 @@ function getInitials(name: string) {
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
 export default async function StudentDashboard() {
+  // Trigger reminders (side-effect)
+  await checkAndPushReminders()
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
 
   const { data: profile } = await supabase
     .from('v_users').select('*').eq('user_id', user?.id).single()
@@ -93,12 +71,12 @@ export default async function StudentDashboard() {
     }
   })
   const totalPresent = allAttendance?.filter(a => a.status === 'present').length || 0
-  const totalClasses = allAttendance?.length || 1
+  const totalClasses = (allAttendance?.length && allAttendance.length > 0) ? allAttendance.length : 1
   const overallPct = Math.round((totalPresent / totalClasses) * 100)
 
   const unreadCount = notifications?.filter(n => !n.read_status).length || 0
   const nextClass = getNextClass(schedule || [])
-  const minsUntilNext = nextClass ? minutesUntil(nextClass.start_time) : null
+  const nextClassStatus = nextClass ? getLectureStatus(nextClass.start_time, nextClass.end_time) : null
 
   // Week strip: Mon to Sat attendance
   const weekDays = [1,2,3,4,5,6]
@@ -130,7 +108,9 @@ export default async function StudentDashboard() {
             <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
               {getInitials(profile?.name || 'S')}
             </div>
-            <span className="absolute top-0 right-0 h-3 w-3 rounded-full bg-red-500 border-2 border-white" />
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 h-3 w-3 rounded-full bg-red-500 border-2 border-white" />
+            )}
           </div>
         </div>
       </div>
@@ -139,15 +119,15 @@ export default async function StudentDashboard() {
       {nextClass && (
         <div className="px-5 mb-4">
           <div className="bg-blue-600 rounded-2xl p-5 text-white relative overflow-hidden">
-            <div className="absolute right-4 top-4 bg-blue-500/40 rounded-xl px-3 py-1 text-center">
+            <div className="absolute right-4 top-4 bg-blue-500/40 rounded-xl px-3 py-1 text-center border border-blue-400/30">
               <p className="text-[10px] text-blue-100 font-medium">Sem</p>
               <p className="text-xl font-bold">{profile?.semester || 4}</p>
             </div>
             <p className="text-blue-100 text-xs font-medium mb-1">
-              {minsUntilNext !== null && minsUntilNext > 0 ? 'Next class in' : 'Now in progress'}
+              {nextClassStatus?.status === 'live' ? 'Currently Live' : 'Up next'}
             </p>
             <p className="text-4xl font-bold mb-1">
-              {minsUntilNext !== null && minsUntilNext > 0 ? `${minsUntilNext} min` : 'Live'}
+              {nextClassStatus?.status === 'live' ? 'Live' : nextClassStatus?.countdown || ''}
             </p>
             <p className="text-lg font-semibold">{nextClass.subject}</p>
             <p className="text-blue-200 text-sm mt-1">
@@ -159,15 +139,15 @@ export default async function StudentDashboard() {
 
       {/* Stats Row */}
       <div className="px-5 mb-5 grid grid-cols-3 gap-3">
-        <div className="bg-green-50 rounded-2xl p-3 text-center">
+        <div className="bg-green-50 rounded-2xl p-3 text-center border border-green-100/50">
           <p className={`text-2xl font-bold ${overallPct < 75 ? 'text-red-600' : 'text-green-700'}`}>{overallPct}%</p>
           <p className="text-xs text-slate-500 mt-0.5">Attendance</p>
         </div>
-        <div className="bg-purple-50 rounded-2xl p-3 text-center">
+        <div className="bg-purple-50 rounded-2xl p-3 text-center border border-purple-100/50">
           <p className="text-2xl font-bold text-purple-700">{schedule?.length || 0}</p>
           <p className="text-xs text-slate-500 mt-0.5">Classes today</p>
         </div>
-        <div className="bg-amber-50 rounded-2xl p-3 text-center">
+        <div className="bg-amber-50 rounded-2xl p-3 text-center border border-amber-100/50">
           <p className="text-2xl font-bold text-amber-700">{unreadCount}</p>
           <p className="text-xs text-slate-500 mt-0.5">Alerts</p>
         </div>
@@ -183,35 +163,33 @@ export default async function StudentDashboard() {
         </div>
         <div className="space-y-2">
           {!schedule || schedule.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm bg-white rounded-2xl">No classes today</div>
+            <div className="text-center py-8 text-slate-400 text-sm bg-white rounded-2xl border border-slate-100">No classes today</div>
           ) : schedule.map((lecture) => {
-            const status = getClassStatus(lecture.start_time, lecture.end_time)
+            const statusInfo = getLectureStatus(lecture.start_time, lecture.end_time)
+            const isLive = statusInfo.status === 'live'
             return (
               <div
                 key={lecture.timetable_id}
-                className={`flex items-center gap-3 rounded-2xl p-3.5 border ${status === 'live' ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-100'}`}
+                className={`flex items-center gap-3 rounded-2xl p-3.5 border transition-all duration-300 ${isLive ? 'bg-white border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)] animate-pulse-slow' : 'bg-white border-slate-100'}`}
               >
                 <div className="min-w-14 text-center">
-                  <p className="text-xs font-bold text-slate-900">{lecture.start_time.substring(0,5)}</p>
-                  <p className="text-[10px] text-slate-400">{parseInt(lecture.start_time) >= 12 ? 'PM' : 'AM'}</p>
+                  <p className={`text-xs font-bold ${isLive ? 'text-purple-700' : 'text-slate-900'}`}>{lecture.start_time.substring(0,5)}</p>
+                  <p className="text-[10px] text-slate-400 uppercase">{parseInt(lecture.start_time) >= 12 ? 'PM' : 'AM'}</p>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold truncate ${status === 'live' ? 'text-blue-700' : 'text-slate-900'}`}>
+                  <p className={`text-sm font-semibold truncate ${isLive ? 'text-purple-800' : 'text-slate-900'}`}>
                     {lecture.subject}
                   </p>
                   <p className="text-xs text-slate-400 truncate">{lecture.classroom} · Prof. {lecture.faculty.split(' ').pop()}</p>
                 </div>
-                {status === 'live' && (
-                  <span className="shrink-0 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded-full">Live</span>
+                {isLive && (
+                  <span className="shrink-0 bg-purple-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">LIVE</span>
                 )}
-                {status === 'soon' && (
-                  <span className="shrink-0 bg-amber-100 text-amber-700 text-[10px] font-semibold px-2 py-1 rounded-full border border-amber-200">Soon</span>
+                {statusInfo.status === 'soon' && (
+                  <span className="shrink-0 bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full border border-amber-200/50">Soon</span>
                 )}
-                {status === 'later' && (
-                  <span className="shrink-0 text-slate-400 text-xs font-medium">Later</span>
-                )}
-                {status === 'done' && (
-                  <span className="shrink-0 text-slate-300 text-xs">Done</span>
+                {statusInfo.status === 'later' && (
+                  <span className="shrink-0 text-slate-400 text-xs font-medium">Coming up</span>
                 )}
               </div>
             )

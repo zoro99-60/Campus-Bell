@@ -15,11 +15,13 @@ type Student = {
 export function AttendanceMarker({
   students,
   timetableId,
+  entryId,
   date,
   isLocked,
 }: {
   students: Student[]
   timetableId: string
+  entryId: string
   date: string
   isLocked: boolean
 }) {
@@ -50,6 +52,7 @@ export function AttendanceMarker({
     setError(null)
     const fd = new FormData()
     fd.append('timetable_id', timetableId)
+    fd.append('entry_id', entryId)
     fd.append('date', date)
     fd.append('entries', JSON.stringify(students.map(s => ({ user_id: s.user_id, status: statuses[s.user_id] }))))
     const result = await submitAttendance(fd)

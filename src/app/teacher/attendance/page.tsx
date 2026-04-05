@@ -21,6 +21,9 @@ export default async function TeacherAttendancePage({
 
   if (!lecture) redirect('/teacher')
 
+  const header_id = (lecture as any).header_id
+  const entry_id = timetable_id // In the view, timetable_id is te.id
+
   const { data: students } = await supabase
     .from('v_users').select('user_id, name, roll_number')
     .eq('role', 'student')
@@ -30,24 +33,25 @@ export default async function TeacherAttendancePage({
 
   const todayStr = new Date().toISOString().split('T')[0]
 
-  // Check if already locked
+  // 1. Check if specific lecture is already locked
   const { data: session } = await supabase
     .from('attendance_sessions')
     .select('is_locked')
-    .eq('timetable_id', timetable_id)
+    .eq('timetable_entry_id', entry_id)
     .eq('session_date', todayStr)
     .single()
 
-  // Get existing attendance for today
+  // 2. Get existing attendance for this specific lecture today
   const { data: existingAtt } = await supabase
     .from('attendance').select('user_id, status')
-    .eq('timetable_id', timetable_id)
+    .eq('timetable_entry_id', entry_id)
     .eq('date', todayStr)
 
-  // Get all attendance per student for percentage
+  // 3. Overall attendance for percentage (using header correlation)
   const studentIds = students?.map(s => s.user_id) || []
   const { data: allAtt } = await supabase
     .from('attendance').select('user_id, status')
+    .eq('timetable_id', header_id) // Overall pct for this subject header
     .in('user_id', studentIds.length > 0 ? studentIds : ['none'])
 
   const studentsWithData = (students || []).map(s => {
@@ -73,7 +77,8 @@ export default async function TeacherAttendancePage({
 
       <AttendanceMarker
         students={studentsWithData}
-        timetableId={timetable_id}
+        timetableId={header_id}
+        entryId={entry_id}
         date={todayStr}
         isLocked={session?.is_locked || false}
       />

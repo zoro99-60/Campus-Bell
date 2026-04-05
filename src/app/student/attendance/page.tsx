@@ -8,26 +8,33 @@ export default async function StudentAttendancePage() {
   const { data: profile } = await supabase
     .from('users').select('*').eq('user_id', user?.id).single()
 
+  const { data: studentProfile } = await supabase
+    .from('student_profiles').select('*').eq('user_id', user?.id).single()
+
   const { data: allTimetable } = await supabase
-    .from('timetable').select('timetable_id, subject')
-    .eq('department', profile?.department || '')
-    .eq('year', profile?.year || 1)
-    .eq('division', profile?.division || '')
+    .from('v_timetable').select('entry_id, subject')
+    .eq('department', studentProfile?.department || '')
+    .eq('semester', studentProfile?.semester || 0)
+    .eq('division', studentProfile?.division || '')
 
   const { data: allAttendance } = await supabase
     .from('attendance').select('*').eq('user_id', user?.id)
 
   // Group by subject
-  const subjectMap: Record<string, { present: number; total: number; absent: string[] }> = {}
+  const subjectMap: Record<string, { present: number; total: number; entries: string[] }> = {}
+  
+  // Initialize from timetable
   allTimetable?.forEach(t => {
-    if (!subjectMap[t.subject]) subjectMap[t.subject] = { present: 0, total: 0, absent: [] }
+    if (!subjectMap[t.subject]) subjectMap[t.subject] = { present: 0, total: 0, entries: [] }
+    subjectMap[t.subject].entries.push(t.entry_id)
   })
+
+  // Aggregate attendance
   allAttendance?.forEach(a => {
-    const t = allTimetable?.find(tt => tt.timetable_id === a.timetable_id)
+    const t = allTimetable?.find(tt => tt.entry_id === a.timetable_entry_id)
     if (t && subjectMap[t.subject]) {
       subjectMap[t.subject].total++
       if (a.status === 'present') subjectMap[t.subject].present++
-      else subjectMap[t.subject].absent.push(a.date)
     }
   })
 
